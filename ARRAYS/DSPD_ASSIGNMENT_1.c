@@ -1,3 +1,6 @@
+/*
+ASSIGNMENT DONE BY : ABDUL SATTAR MAPARA and SHIVAM MISHRA
+*/
 #include <stdio.h>
 #include <string.h>
 #define MAX_SIZE 5
