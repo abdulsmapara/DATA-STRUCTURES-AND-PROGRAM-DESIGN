@@ -13,4 +13,4 @@ IT INCLUDES FUNCTIONS ON THE FOLLOWING DATA STRUCTURES:
 -TREES(ONLY A FEW FUNCTIONS)
 <br />
 
-IF YOU WANT TO CHANGE THE DATA TYPE TO USE WITH THESE DATA STRUCTURES CHANGE THE VARIABLE "ItemType" and print,scan,compare functions.Every other thing is maintained.
+IF YOU WANT TO CHANGE THE DATA TYPE TO USE WITH THESE DATA STRUCTURES CHANGE THE value of "ItemType" and print,scan,compare functions.Every other thing is maintained.
