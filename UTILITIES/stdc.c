@@ -1,13 +1,9 @@
 /*
-                             CODEingZONE
-                A PLATFORM TO THINK AND CODE LIKE A PRODIGY
-
+                            
         -IMPORTANT C-FUNCTIONS USEFUL IN DATA STRUCTURES AND PROGRAM DESIGN COURSES IN C LANGUAGE
         (PLEASE ALSO FIND stdc.h file)
-        -YOU MAY CONTRIBUTE TO CODEingZONE by sending us your codes at abdulsmapara@gmail.com(with the subject-MY CONTRIBUTION TO CODEingZONE)
-
                 PREPARED BY:    -ABDUL SATTAR MAPARA
-                                 codeingzone.in/abdulsmapara
+                                 abdulsmapara.github.io
                                  abdulsmapara@gmail.com    
 */
 #include "stdc.h"
