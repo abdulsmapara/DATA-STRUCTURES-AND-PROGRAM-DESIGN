@@ -1,4 +1,4 @@
-Assignments on Linked Lists-
+Assignments on <b>Linked Lists</b>-
 <ul>
   <li>
     Bank Transactions
@@ -44,7 +44,7 @@ Assignments on Linked Lists-
     Sparse Matrix
       <ul>
         <li>
-        Matrix to use space efficiently which do not store 0 (null) values.
+        Matrix to use space efficiently which does not store 0 (null) values.
         In this implementation, Read and Add operations are supported.(Can be enhanced to support any operation on matrices)
         </li>
       </ul>
