@@ -4,4 +4,4 @@ The data is brought into the program from text file, various operations(like Bir
 <br />
 Data Structures involved: n-ary Trees,Hash Tables(Array of Linked lists, for quick insertion/retrieval)<br />
 Assignment done by:  Abdul Sattar Mapara (BT16CSE053) and Rohan Salvi (BT16CSE077) ,<br />
-Under the guidance of: R.B.Keskar Sir
+Under the guidance of: R.B.Keskar Sir and Y.Chopde Sir
