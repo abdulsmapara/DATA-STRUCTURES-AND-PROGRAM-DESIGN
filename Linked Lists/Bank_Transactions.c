@@ -10,6 +10,7 @@
 					  	 BT16CSE053					  BT16CSE077
 					  				-GUIDED BY:-
 					  		  	   RESPECTED R.B.KESKAR SIR 
+					  		  	   RESPECTED Y.CHOPDE SIR
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,9 +22,9 @@
 #define START_TRANSACTION_ID 111
 #define MAX_ACCOUNT_SIZE 10
 #define ANSWER 4
-#define NUM_ACCOUNTS 3	//change number of accounts in database here
 #define DEBIT_CASE 1
 #define CREDIT_CASE 2
+#define END_FOR_k 3
 #define ABORT_CASE 3
 #define REVERT_CASE 4
 #define FAILURE_CASE 5
@@ -98,25 +99,6 @@ void Load(char* str)
     }
     return;
 }
-Account* MakeAccount()
-{
-	//creates an account and returns pointer to the newly formed account
-	Account* nptr;
-	char user_acc_id[MAX_ACCOUNT_SIZE];
-	int amount;
-	nptr=(Account*)malloc(sizeof(Account));
-	if(nptr!=NULL)
-	{
-		printf("ENTER ACCOUNT ID:\t");
-		scanf("%s",user_acc_id);
-		printf("ENTER AMOUNT in THE ACCOUNT\t");
-		scanf("%d",&amount);
-		strcpy(nptr->account_id,user_acc_id);
-		nptr->amount=amount;
-		nptr->next=NULL;
-	}
-	return nptr;
-}
 Status InsertAtStart(Account** lpptr,Account* nptr)
 {
 	/*
@@ -142,27 +124,49 @@ Status InsertAtStart(Account** lpptr,Account* nptr)
 	}
 	return sc;
 }
-Account* LoadDataBase(int n)
+Account* LoadDataBase()
 {
 	/*
 		CREATES ACCOUNT NODES AND ADDS TO THE LIST AND RETURNS HEAD POINTER TO THE LIST
 	*/
 	int i;
 	Status sc=SUCCESS;
+	char acc_id[MAX_ACCOUNT_SIZE];
 	Account* head=NULL,*nptr;
-	for(i=0;i<n&&sc;i++)
+	FILE* fp=NULL;
+	fp=fopen("ACCOUNTS.txt","r");
+	Load("LOADING ACCOUNT DATABASE FROM ACCOUNTS.txt");
+	if(fp==NULL)
 	{
-		nptr=MakeAccount();
-		sc=InsertAtStart(&head,nptr);
-	}
-	//Load("LOADING DATABASE");
-	if(sc==SUCCESS)
-	{
-		printf("DATABASE LOADED SUCCESSFULLY\n");
+		printf("SOMETHING WENT WRONG...");
 	}
 	else
 	{
-		printf("------!!!DATABASE LOADING FAILED!!!------\n");
+		while((fscanf(fp,"%s",acc_id) != EOF)&&sc)
+		{
+			nptr=(Account*)malloc(sizeof(Account));
+			if(nptr != NULL)
+			{
+				strcpy(nptr->account_id,acc_id);
+				fscanf(fp,"%d",&(nptr->amount));
+				sc=InsertAtStart(&head,nptr);
+			}
+			else
+			{
+				sc=FAILURE;
+			}
+		}
+		if(sc==SUCCESS)
+		{
+			printf("DATABASE LOADED SUCCESSFULLY\t\t\t\t\t\n");
+		}
+		else
+		{
+			printf("------!!!DATABASE LOADING FAILED!!!------\n");
+		}
+
+		fclose(fp);
+		fp=NULL;
 	}
 	return head;
 }
@@ -417,18 +421,6 @@ Status Revert(int t_id,Transaction* headTransaction,Account* headAccount)	//t_id
 		if(lptr->isDone==PARTIAL||lptr->isDone==SUCCESS)
 		{
 			caught=FALSE;
-			while(lptrAcc!=NULL&&!caught)
-			{
-				if(!strcmp(lptrAcc->account_id,lptr->source))
-				{
-					caught=TRUE;
-					lptrAcc->amount+=lptr->transaction_amount;					
-				}
-				else
-				{
-					lptrAcc=lptrAcc->next;
-				}
-			}
 			if(lptr->isDone==SUCCESS)
 			{
 				caught=FALSE;
@@ -438,12 +430,31 @@ Status Revert(int t_id,Transaction* headTransaction,Account* headAccount)	//t_id
 					if(!strcmp(lptrAcc->account_id,lptr->target))
 					{
 						caught=TRUE;
-						lptrAcc->amount-=lptr->transaction_amount;
+						if(lptrAcc->amount >= lptr->transaction_amount)
+						{
+							lptrAcc->amount-=lptr->transaction_amount;
+						}
+						else
+						{
+							sc_revert=FAILURE;
+						}
 					}
 					else
 					{
 						lptrAcc=lptrAcc->next;
 					}
+				}
+			}
+			while(lptrAcc!=NULL&&!caught&&sc_revert)
+			{
+				if(!strcmp(lptrAcc->account_id,lptr->source))
+				{
+					caught=TRUE;
+					lptrAcc->amount+=lptr->transaction_amount;					
+				}
+				else
+				{
+					lptrAcc=lptrAcc->next;
 				}
 			}
 			lptr->isDone=FAILED;//no further reverts are possible on this transaction_id
@@ -499,11 +510,23 @@ void AccountTraverse(Account* head)
 {
 	Account* lptr;
 	lptr=head;
-	while(lptr!=NULL)
+	FILE* fp=NULL;
+	fp=fopen("ACCOUNTS.txt","w");
+	if(fp != NULL)
 	{
-		printf("ACCOUNT ID:%s\t",lptr->account_id);
-		printf("AMOUNT:%d\n",lptr->amount);
-		lptr=lptr->next;
+		while(lptr!=NULL)
+		{
+			fprintf(fp,"%s ",lptr->account_id);
+			fprintf(fp,"%d",lptr->amount);
+			if(lptr->next != NULL)
+			{
+				fprintf(fp,"\n");
+			}
+			printf("ACCOUNT ID:%s\t",lptr->account_id);
+			printf("AMOUNT:%d\n",lptr->amount);
+			lptr=lptr->next;
+		}
+
 	}
 	return;
 }
@@ -568,192 +591,212 @@ int main()
 	char main_source[MAX_ACCOUNT_SIZE],main_target[MAX_ACCOUNT_SIZE];
 	Status sc_debit,sc_credit,sc_abort,sc_revert;
 	Transaction* headTransaction,*tailTransaction,*ptr;
-	Account* acc_head=LoadDataBase(NUM_ACCOUNTS);
+	FILE* fp=NULL;
+	Account* acc_head=LoadDataBase();
 	printf("\t\tMENU\n1]\tDEBIT\n2]\tCREDIT\n0]\tEXIT\n");
 	decrease=0;
 	headTransaction=NULL;
 	tailTransaction=NULL;
 	flag=1;
 	numNode=0;
-	while(flag)
+	fp=fopen("TRANSACTION_TYPE_1.txt","r");
+	if(fp==NULL)
 	{
-		printf("ENTER A SUB-OPERATION:\n");
-		scanf("%d",&choice);
-		switch(choice)
-		{
-			case DEBIT_CASE:
-						numNode++;
-						printf("ENTER SOURCE ACCOUNT NUMBER:\t");
-						scanf("%s",main_source);
-						printf("ENTER TARGET ACCOUNT NUMBER:\t");
-						scanf("%s",main_target);
-						printf("ENTER TRANSACTION AMOUNT:\t");
-						scanf("%d",&main_amount);
-						//Account* head,char* source,char* target,int* balance,int debit_amount,Transaction** headTransaction
-						Load("DEBITING");
-						printf("PROCESSING DONE\n");
-						sc_debit=Debit(acc_head,main_source,main_target,&balance,main_amount,&headTransaction,&tailTransaction,numNode);
-						if(sc_debit==FAILURE)
-						{
-							printf("DEBIT FAILED\nACCOUNT BALANCE:%d\n",balance);
-						}
-						break;
-			case CREDIT_CASE:
-						numNode++;
-						printf("ENTER TRANSACTION ID:\t");
-						scanf("%d",&main_t_id);
-						Load("CREDITING");
-						printf("PROCESSING DONE\n");
-						sc_credit=Credit(acc_head,headTransaction,main_t_id,numNode);
-						if(sc_credit)
-						{
-							printf("CREDIT SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
-						}
-						else
-						{
-							decrease--;
-							printf("CREDIT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
-						}
-						break;
-			
-			case EXIT:	flag=0;
-						Load("EXITING");
-						printf("\n");
-						break;
-			default:	
-						printf("INCORRECT CHOICE\nTRY AGAIN\n");
-						break;
-			}
-	}
-	printf("ENTER THE VALUE OF k\n");
-	scanf("%d",&k);
-	Bool consistent=CheckConsistent(headTransaction,k+decrease,acc_head);
-	if(consistent)
-	{
-		printf("\nSYSTEM CONSISTENT\n");
+		printf("SOMETHING WENT WRONG...\n");
 	}
 	else
 	{
-		printf("THE SYSTEM TILL GIVEN k=%d WAS INITIALLY INCONSISTENT BUT NOW EVERYTHING TILL k IS CONSISTENT\n",k);
+		Load("FETCHING INPUT FROM FILE");
+		printf("\t\t\t\t\n");
+		while((fscanf(fp,"%d",&choice)) != EOF)
+		{
+			switch(choice)
+			{
+				case DEBIT_CASE:
+							numNode++;
+							//printf("ENTER SOURCE ACCOUNT NUMBER:\t");
+							fscanf(fp,"%s",main_source);
+							//printf("ENTER TARGET ACCOUNT NUMBER:\t");
+							fscanf(fp,"%s",main_target);
+							//printf("ENTER TRANSACTION AMOUNT:\t");
+							fscanf(fp,"%d",&main_amount);
+							//Account* head,char* source,char* target,int* balance,int debit_amount,Transaction** headTransaction
+							Load("DEBITING");
+							printf("PROCESSING DONE\n");
+							sc_debit=Debit(acc_head,main_source,main_target,&balance,main_amount,&headTransaction,&tailTransaction,numNode);
+							if(sc_debit==FAILURE)
+							{
+								printf("DEBIT FAILED\nACCOUNT BALANCE:%d\n",balance);
+							}
+							break;
+				case CREDIT_CASE:
+							numNode++;
+							//printf("ENTER TRANSACTION ID:\t");
+							fscanf(fp,"%d",&main_t_id);
+							Load("CREDITING");
+							printf("PROCESSING DONE\n");
+							sc_credit=Credit(acc_head,headTransaction,main_t_id,numNode);
+							if(sc_credit)
+							{
+								printf("CREDIT SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
+							}
+							else
+							{
+								decrease--;
+								printf("CREDIT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
+							}
+							break;
+				case END_FOR_k:
+							Load("FETCHING THE VALUE OF k");
+						 	printf("\t\t\t\t\t\n");
+							fscanf(fp,"%d",&k);
+							printf("THE VALUE OF k is %d\n",k);
+							Bool consistent=CheckConsistent(headTransaction,k+decrease,acc_head);
+							if(consistent)
+							{
+								printf("\nSYSTEM CONSISTENT\n");
+							}
+							else
+							{
+								printf("THE SYSTEM TILL GIVEN k=%d WAS INITIALLY INCONSISTENT BUT NOW EVERYTHING TILL k IS CONSISTENT\n",k);
+							}
+							break;
+				default:	
+							printf("INCORRECT CHOICE\nTRY AGAIN\n");
+							break;
+				}
+				
+		 }
+		 
+		fclose(fp);
+		fp=NULL;
+		AccountTraverse(acc_head);
 	}
-	AccountTraverse(acc_head);
-	
 	//QUESTION 2
 	DeleteTransaction(&headTransaction);
 	numNode=0;
-	printf("\t\tMENU\n1]\tDEBIT\n2]\tCREDIT\n3]\tABORT\n4]\tREVERT\n5]\tFAILURE\n0]\tEXIT\n");
-	flag=1;
-	while(flag)
+	printf("\t\tMENU\n1]\tDEBIT\n2]\tCREDIT\n3]\tABORT\n4]\tREVERT\n5]\tFAILURE\n");
+	fp=fopen("TRANSACTION_TYPE_2.txt","r");
+	if(fp == NULL)
 	{
-		printf("ENTER A SUB-OPERATION:\n");
-		scanf("%d",&choice);
-		switch(choice)
-		{
-			case DEBIT_CASE:
-						numNode++;
-						printf("ENTER SOURCE ACCOUNT NUMBER:\t");
-						scanf("%s",main_source);
-						printf("ENTER TARGET ACCOUNT NUMBER:\t");
-						scanf("%s",main_target);
-						printf("ENTER TRANSACTION AMOUNT:\t");
-						scanf("%d",&main_amount);
-						//Account* head,char* source,char* target,int* balance,int debit_amount,Transaction** headTransaction
-						Load("DEBITING");
-						printf("PROCESSING DONE\n");
-						sc_debit=Debit(acc_head,main_source,main_target,&balance,main_amount,&headTransaction,&tailTransaction,numNode);
-						if(sc_debit==FAILURE)
-						{
-							printf("DEBIT FAILED\nACCOUNT BALANCE:%d\n",balance);
-						}
-						break;
-			case CREDIT_CASE:
-						numNode++;
-						printf("ENTER TRANSACTION ID:\t");
-						scanf("%d",&main_t_id);
-						Load("CREDITING");
-						printf("PROCESSING DONE\n");
-						sc_credit=Credit(acc_head,headTransaction,main_t_id,numNode);
-						if(sc_credit)
-						{
-							printf("CREDIT SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
-						}
-						else
-						{
-							printf("CREDIT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
-						}
-						break;
-			case ABORT_CASE:	
-						numNode++;
-						printf("ENTER TRANSACTION ID:\t");
-						scanf("%d",&main_t_id);
-						//int t_id,Transaction* headTransaction,Account* headAccount
-						Load("ABORTING");
-						sc_abort=Abort(main_t_id,headTransaction,acc_head);
-						if(sc_abort)
-						{
-							printf("ABORT OPERATION SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
-						}
-						else
-						{
-							printf("ABORT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
-						}
-						break;
-			case REVERT_CASE:
-						numNode++;
-						printf("ENTER TRANSACTION ID:\t");
-						scanf("%d",&main_t_id);
-						Load("REVERTING");
-						sc_revert=Revert(main_t_id,headTransaction,acc_head);
-						if(sc_revert)
-						{
-							printf("REVERT OPERATION SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
-						}
-						else
-						{
-							printf("REVERT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
-						}
-						break;
-			case FAILURE_CASE:
-						numNode++;
-						FailureOfTransaction(headTransaction,acc_head);
-						break;
-			case EXIT:		flag=0;
-						Load("EXITING");
-						printf("\n");
-						break;
-			default:	
-						printf("INCORRECT CHOICE\nTRY AGAIN\n");
-						break;
-		}
+		printf("SOMETHING WENT WRONG...\n");
 	}
-	ptr=headTransaction;
-	Status abortSc=SUCCESS;
-	Bool consistency=TRUE;
-	while(ptr!=NULL&&abortSc)
+	else
 	{
-		if(ptr->isDone==PARTIAL)
+		Load("FETCHING INPUT FROM FILE");
+		printf("\t\t\t\t\t\t\t\n");
+		while((fscanf(fp,"%d",&choice)) != EOF)
 		{
-			consistency=FALSE;
-			abortSc=Abort(ptr->transactionId,headTransaction,acc_head);
-			if(abortSc)
+			//printf("ENTER A SUB-OPERATION:\n");
+			//scanf("%d",&choice);
+			switch(choice)
 			{
-				printf("TRANSACTION WITH TRANSACTION ID=%d REVERTED SUCCESSFULLY\n",ptr->transactionId);
-			}
-			else
-			{
-				printf("SYSTEM CRASHED\n");
+				case DEBIT_CASE:
+							numNode++;
+							//printf("ENTER SOURCE ACCOUNT NUMBER:\t");
+							fscanf(fp,"%s",main_source);
+							//printf("ENTER TARGET ACCOUNT NUMBER:\t");
+							fscanf(fp,"%s",main_target);
+							//printf("ENTER TRANSACTION AMOUNT:\t");
+							fscanf(fp,"%d",&main_amount);
+							//Account* head,char* source,char* target,int* balance,int debit_amount,Transaction** headTransaction
+							Load("DEBITING");
+							printf("PROCESSING DONE\n");
+							sc_debit=Debit(acc_head,main_source,main_target,&balance,main_amount,&headTransaction,&tailTransaction,numNode);
+							if(sc_debit==FAILURE)
+							{
+								printf("DEBIT FAILED\nACCOUNT BALANCE:%d\n",balance);
+							}
+							break;
+				case CREDIT_CASE:
+							numNode++;
+							//printf("ENTER TRANSACTION ID:\t");
+							fscanf(fp,"%d",&main_t_id);
+							Load("CREDITING");
+							printf("PROCESSING DONE\n");
+							sc_credit=Credit(acc_head,headTransaction,main_t_id,numNode);
+							if(sc_credit)
+							{
+								printf("CREDIT SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
+							}
+							else
+							{
+								printf("CREDIT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
+							}
+							break;
+				case ABORT_CASE:	
+							numNode++;
+							//printf("ENTER TRANSACTION ID:\t");
+							fscanf(fp,"%d",&main_t_id);
+							//int t_id,Transaction* headTransaction,Account* headAccount
+							Load("ABORTING");
+							sc_abort=Abort(main_t_id,headTransaction,acc_head);
+							if(sc_abort)
+							{
+								printf("ABORT OPERATION SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
+							}
+							else
+							{
+								printf("ABORT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
+							}
+							break;
+				case REVERT_CASE:
+							numNode++;
+							//printf("ENTER TRANSACTION ID:\t");
+							fscanf(fp,"%d",&main_t_id);
+							Load("REVERTING");
+							sc_revert=Revert(main_t_id,headTransaction,acc_head);
+							if(sc_revert)
+							{
+								printf("REVERT OPERATION SUCCESSFUL FOR TRANSACTION ID %d\n",main_t_id);
+							}
+							else
+							{
+								printf("REVERT OPERATION FOR TRANSACTION ID %d FAILED\n",main_t_id);
+							}
+							break;
+				case FAILURE_CASE:
+							numNode++;
+							FailureOfTransaction(headTransaction,acc_head);
+							break;
+				default:	
+							printf("INCORRECT CHOICE\nTRY AGAIN\n");
+							break;
 			}
 		}
-		ptr=ptr->nextTransaction;
+		fclose(fp);
+		fp=NULL;
+		ptr=headTransaction;
+		Status abortSc=SUCCESS;
+		Bool consistency=TRUE;
+		while(ptr!=NULL&&abortSc)
+		{
+			if(ptr->isDone==PARTIAL)
+			{
+				consistency=FALSE;
+				abortSc=Abort(ptr->transactionId,headTransaction,acc_head);
+				if(abortSc)
+				{
+					printf("TRANSACTION WITH TRANSACTION ID=%d REVERTED SUCCESSFULLY\n",ptr->transactionId);
+				}
+				else
+				{
+					printf("SYSTEM CRASHED\n");
+				}
+			}
+			ptr=ptr->nextTransaction;
+		}
+		if((!consistency)&&abortSc)
+		{
+			printf("INCONSISTENT STATE OF THE SYSTEM WAS ENCOUNTERED BUT WE REVERTED IT SUCCESSFULLY\n");
+		}
+		else if(abortSc)
+		{
+			printf("\nCONSISTENT SYSTEM\n");
+		}
 	}
-	if((!consistency)&&abortSc)
-	{
-		printf("INCONSISTENT STATE OF THE SYSTEM WAS ENCOUNTERED BUT WE REVERTED IT SUCCESSFULLY\n");
-	}
-	else if(abortSc)
-	{
-		printf("\nCONSISTENT SYSTEM\n");
-	}
+	AccountTraverse(acc_head);
+
 	printf("---------THANK YOU FOR USING OUR PROGRAM------------\n");
 	printf("WE WOULD LIKE YOU TO RATE US(out of 5)---\n");	//MAX_RATING=5
 	int rating;
@@ -762,11 +805,11 @@ int main()
 	{
 		  if(rating>MAX_RATING)
 		  {
-		  	printf("PLEASE ENTER A RATING IN THE RANGE 0-5\n");
+		  	printf("WE KNOW YOU LOVE US BUT WE WOULD LIKE TO STAY DOWN TO EARTH\n");
 		  }
 		  else
 		  {
-		  	printf("WE WOULD LIKE OUR MINIMUM RATING TO BE 0\n");//MIN_RATING=0
+		  	printf("AS INDIANS WE WOULD LIKE OUR MINIMUM RATING TO BE 0\n");//MIN_RATING=0
 		  }
 		  scanf("%d",&rating);
 	}
@@ -780,7 +823,7 @@ int main()
 	}
 	else
 	{
-		printf("WE ARE PROUD TO EARN THE 5 STARS! SPECIAL THANKS TO RESPECTED R.B.KESKAR SIR FOR MOTIVATING US BY HIS OWN EXAMPLES.\n");
+		printf("WE ARE PROUD TO EARN THE 5 STARS! SPECIAL THANKS TO RESPECTED R.B.KESKAR SIR AND RESPECTED Y.CHOPDE SIR FOR MOTIVATING US BY THEIR OWN EXAMPLES.\n");
 	}
 	return 0;
 }
