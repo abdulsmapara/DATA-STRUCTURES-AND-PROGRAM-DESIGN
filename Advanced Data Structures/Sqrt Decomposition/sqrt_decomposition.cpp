@@ -11,6 +11,7 @@ public:
 	sqrt_decomposition(int* array,int len);
 	void update(int index,int new_value);
 	int query(int left,int right);
+	//~sqrt_decomposition();	//Free Memory (Important)
 };
 sqrt_decomposition::sqrt_decomposition(int* array,int len)
 {
