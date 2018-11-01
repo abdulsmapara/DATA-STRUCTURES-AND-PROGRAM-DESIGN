@@ -73,7 +73,7 @@ public:
 	void update_(std::string old,std::string newString){
 
 		delete_(old);
-		delete_(newString);
+		insert_(newString);
 
 	}
 
